@@ -28,6 +28,7 @@ certificatesResolvers:
     acme:
       email: dvkotin@gmail.com
       storage: /ssl/acme.json
+      #Test server: (delete on prod)
       caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
       httpChallenge:
         entryPoint: http
