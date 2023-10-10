@@ -1,4 +1,4 @@
-version: "3"
+version: "3.3"
 
 services:
   wireguard:
@@ -20,33 +20,40 @@ services:
     labels:
       - "traefik.enable=true"
       # заменить domain.com на свой
-      - "traefik.http.routers.traefik.entrypoints=https"
       - "traefik.http.routers.wireguard.rule=Host(`dvkotin.com`)"
-      - "traefik.http.routers.wireguard.entrypoints=https"
-      - "traefik.http.routers.wireguard.tls.certresolver=letsEncrypt"
+      - "traefik.http.routers.wireguard.entrypoints=websecure"
+      - "traefik.http.routers.wireguard.tls.certresolver=le"
       - "traefik.http.services.wireguard.loadbalancer.server.port=8080"
       - "traefik.http.routers.wireguard.middlewares=ipwhitelist,basicauth"
-    networks:
-      - traefik-hub
-    depends_on:
-      - traefik
 
   traefik:
     image: "traefik:v2.10"
     container_name: "traefik"
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    command:
+          - "--api.insecure=false"
+          - "--providers.docker=true"
+          - "--providers.docker.exposedbydefault=false"
+          - "--providers.docker.network=traefik-hub"
+          - "--entrypoints.web.address=:80"
+          - "--entrypoints.websecure.address=:443"
+          - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+          - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+            # Sertificates
+            # - "--entrypoints.https.http.tls.certResolver=le"
+          - "--certificatesresolvers.le.acme.tlschallenge=true"
+          # заменить email на свой
+          - "--certificatesresolvers.le.acme.email=dvkotin@gmail.com"
+          - "--certificatesresolvers.le.acme.storage=/data/acme.json"
+          - "--log.level=DEBUG"
+    ports:
+          - "80:80"
+          - "443:443"
     volumes:
           - "./data/traefik:/data"
           - "/var/run/docker.sock:/var/run/docker.sock:ro"
-          - "./data/traefik.yml:/traefik.yml:ro"
-          - "./ssl:/ssl"
     extra_hosts:
           - host.docker.internal:host-gateway
-    ports:
-      - 80:80
-      - 443:443
     labels:
           - "traefik.enable=true"
           # вайтлист ip для админки
@@ -54,21 +61,19 @@ services:
           # сгенерить basicauth командой:
           # echo $(htpasswd -nb user password) | sed -e s/\\$/\\$\\$/g
           # ВАЖНО СЛОЖНЫЙ ПАРОЛЬ
-          - "traefik.http.middlewares.basicauth.basicauth.users=username:pass"
+          - "traefik.http.middlewares.basicauth.basicauth.users=user:pass"
           - "traefik.http.middlewares.basicauth.basicauth.headerField=X-Forwarded-User"
-          # New:
-          - "traefik.http.routers.traefik.entrypoints=https"
+          # NEW
+          - "traefik.http.routers.traefik.entrypoints=websecure"
           - "traefik.http.routers.traefik.rule=Host(`tr.dvkotin.com`)"
           - "traefik.http.routers.traefik.tls=true"
-          - "traefik.http.routers.traefik.tls.certresolver=letsEncrypt"
+          - "traefik.http.routers.traefik.tls.certresolver=le"
           - "traefik.http.routers.traefik.service=api@internal"
           - "traefik.http.services.traefik-traefik.loadbalancer.server.port=888"
-          - "traefik.http.middlewares.traefik-auth.basicauth.users=username:pass"
+          - "traefik.http.middlewares.traefik-auth.basicauth.users=user:pass"
           - "traefik.http.routers.traefik.middlewares=traefik-auth"
-    networks:
-      - traefik-hub
 
 networks:
-  traefik-hub: {}
-  traefik-networks:
+  default:
+    name: traefik-hub
     external: true
