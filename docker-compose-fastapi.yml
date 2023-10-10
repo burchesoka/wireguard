@@ -1,0 +1,18 @@
+version: '3.7'
+
+services:
+  clients_api:
+    build: .
+    command: uvicorn core.app:app --reload --workers 2 --host 0.0.0.0 --port 5555
+    volumes:
+      - ./:/trading_clients/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clients_api.rule=HOST(`clients.dvkotin.com`)"
+      - "traefik.http.routers.clients_api.entrypoints=websecure"
+      - "traefik.http.services.clients_api.loadbalancer.server.port=5555"
+      - "traefik.http.routers.clients_api.tls.certresolver=le"
+networks:
+  default:
+    name: traefik-hub
+    external: true
