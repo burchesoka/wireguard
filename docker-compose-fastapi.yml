@@ -6,6 +6,7 @@ services:
     command: uvicorn core.app:app --reload --workers 2 --host 0.0.0.0 --port 5555
     volumes:
       - ./:/trading_clients/
+    restart: unless-stopped
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.clients_api.rule=HOST(`clients.dvkotin.com`)"
